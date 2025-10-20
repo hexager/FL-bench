@@ -163,7 +163,29 @@ class FedAvgServer:
             self.monitor_window_name_suffix = (
                 self.args.dataset.monitor_window_name_suffix
             )
-
+        wandb_initialized=False
+        if self.args.common.monitor == "wandb":
+            import wandb
+            try:
+                user_secrets = UserSecretsClient()
+                wandb_api_key = user_secrets.get_secret("WANDB_API_KEY")
+                
+                if wandb_api_key:
+                    wandb.login(key=wandb_api_key)
+                    wandb_initialized = True
+                    print("Successfully logged into WandB")
+                    wandb.init(
+                        project="fl-bench",  # Customize project name as needed
+                        name=f"{self.algorithm_name}_{self.args.dataset.name}_{self.args.common.seed}",  # Unique run name including seed for reproducibility
+                        config=OmegaConf.to_container(self.args, resolve=True),  # Logs Hydra args as structured config
+                        tags=[self.algorithm_name, self.args.dataset.name]  # Optional tags for filtering runs
+                    )
+                    wandb.watch(self.model, log="all", log_freq=10)
+                else:
+                    print("WandB API key not found in secrets")
+            except Exception as e:
+                print(f'Could not login to wandb: {e}. Proceeding without wandb.')
+                wandb_initialized = False
         if self.args.common.monitor == "visdom":
             from visdom import Visdom
 
@@ -754,6 +776,13 @@ class FedAvgServer:
                             self.current_epoch,
                             new_style=True,
                         )
+                    elif self.args.common.monitor == "wandb":
+                        log_dict = {
+                            f"accuracy_{split}_{stage}_local": aggregated.accuracy,
+                            f"loss_{split}_{stage}_local": aggregated.loss,  # Assuming Metrics has .loss; add if computed in client
+                            f"num_selected_clients": len(self.selected_clients)  # Optional: log selection for analysis
+                        }
+                        wandb.log(log_dict, step=self.current_epoch)
 
             # log server side evaluation results
             if (
@@ -788,6 +817,13 @@ class FedAvgServer:
                         self.current_epoch + 1,
                         new_style=True,
                     )
+                if self.args.common.monitor == "wandb":
+                    centralized_metrics = self.test_results[self.current_epoch + 1]["centralized"]["after"][split]
+                    log_dict = {
+                        f"accuracy_{split}_centralized": centralized_metrics.accuracy,
+                        f"loss_{split}_centralized": centralized_metrics.loss  # Add loss if available from evaluate()
+                    }
+                    wandb.log(log_dict, step=self.current_epoch + 1)
 
     def show_max_metrics(self):
         """Show the maximum stats that FL method get."""
@@ -1020,6 +1056,15 @@ class FedAvgServer:
         self.show_max_metrics()
 
         self.logger.close()
+        if self.args.common.monitor == "wandb":
+            # Optional: Save final model as artifact
+            if self.args.common.save_model:
+                model_artifact = wandb.Artifact(f"{self.algorithm_name}_final_model", type="model")
+                torch.save(self.public_model_params, self.output_dir / f"{self.args.dataset.name}_{self.args.common.global_epoch}_{self.args.model.name}.pt")
+                model_artifact.add_file(self.output_dir / f"{self.args.dataset.name}_{self.args.common.global_epoch}_{self.args.model.name}.pt")
+                wandb.log_artifact(model_artifact)
+            wandb.finish()
+            self.logger.log("Wandb run finished")
 
         # plot the training curves
         if self.args.common.save_learning_curve_plot:
