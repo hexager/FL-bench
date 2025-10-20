@@ -11,7 +11,7 @@ from collections import OrderedDict
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
-
+import wandb
 import numpy as np
 import ray
 import torch
@@ -165,7 +165,6 @@ class FedAvgServer:
             )
         wandb_initialized=False
         if self.args.common.monitor == "wandb":
-            import wandb
             try:
                 from kaggle_secrets import UserSecretsClient
                 user_secrets = UserSecretsClient()
