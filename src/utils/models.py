@@ -565,7 +565,6 @@ MODELS = {
     "mobile2": partial(MobileNet, version="2"),
     "mobile3s": partial(MobileNet, version="3s"),
     "mobile3l": partial(MobileNet, version="3l"),
-    "moderate": ModerateCNN,
     "efficient0": partial(EfficientNet, version="0"),
     "efficient1": partial(EfficientNet, version="1"),
     "efficient2": partial(EfficientNet, version="2"),
