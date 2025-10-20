@@ -167,6 +167,7 @@ class FedAvgServer:
         if self.args.common.monitor == "wandb":
             import wandb
             try:
+                from kaggle_secrets import UserSecretsClient
                 user_secrets = UserSecretsClient()
                 wandb_api_key = user_secrets.get_secret("WANDB_API_KEY")
                 
