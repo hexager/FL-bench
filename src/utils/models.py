@@ -481,7 +481,76 @@ class CustomModel(DecoupledModel):
         # 2. self.classifier (normally the final fully connected layer)
         # The default forwarding process is: out = self.classifier(self.base(input))
         pass
+class ModerateCNN(DecoupledModel):
+    """
+    Unified ModerateCNN model that adapts to different datasets.
+    The convolutional base has 3 pooling layers, so the spatial
+    dimension is divided by 8 (e.g., 32x32 -> 4x4, 28x28 -> 3x3).
+    The final feature map depth is 256.
+    """
+    
+    # Calculate feature length: 256 * (H/8) * (W/8)
+    # Note: Uses integer division for each pooling step.
+    feature_length = {
+        # 28x28 inputs (28->14->7->3) -> 256*3*3 = 2304
+        "mnist": 2304,
+        "medmnistS": 2304,
+        "medmnistC": 2304,
+        "medmnistA": 2304,
+        "fmnist": 2304,
+        "emnist": 2304,
+        
+        # 32x32 inputs (32->16->8->4) -> 256*4*4 = 4096
+        "cifar10": 4096,
+        "cinic10": 4096,
+        "cifar100": 4096,
+        "svhn": 4096,
+    }
 
+    def __init__(self, dataset: str, pretrained: bool):
+        super(ModerateCNN, self).__init__()
+
+        in_channels = INPUT_CHANNELS[dataset]
+        num_classes = NUM_CLASSES[dataset]
+        feature_dim = self.feature_length[dataset]
+
+        conv_layer = nn.Sequential(
+            # Conv Layer block 1
+            nn.Conv2d(in_channels=in_channels, out_channels=32, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+
+            # Conv Layer block 2
+            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Dropout2d(p=0.05),
+
+            # Conv Layer block 3
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+        )
+        
+        # self.base is the feature extractor
+        self.base = nn.Sequential(conv_layer, nn.Flatten())
+
+        # self.classifier is the final head
+        self.classifier = nn.Sequential(
+            nn.Dropout(p=0.1),
+            nn.Linear(feature_dim, 1024),
+            nn.ReLU(inplace=True),
+            nn.Linear(1024, 512),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=0.1),
+            nn.Linear(512, num_classes)
+        )
 
 MODELS = {
     "custom": CustomModel,
@@ -503,6 +572,7 @@ MODELS = {
     "mobile2": partial(MobileNet, version="2"),
     "mobile3s": partial(MobileNet, version="3s"),
     "mobile3l": partial(MobileNet, version="3l"),
+    "moderate": ModerateCNN,
     "efficient0": partial(EfficientNet, version="0"),
     "efficient1": partial(EfficientNet, version="1"),
     "efficient2": partial(EfficientNet, version="2"),
