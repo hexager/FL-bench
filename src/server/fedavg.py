@@ -779,8 +779,7 @@ class FedAvgServer:
                     elif self.args.common.monitor == "wandb":
                         log_dict = {
                             f"accuracy_{split}_{stage}_local": aggregated.accuracy,
-                            f"loss_{split}_{stage}_local": aggregated.loss,  # Assuming Metrics has .loss; add if computed in client
-                            f"num_selected_clients": len(self.selected_clients)  # Optional: log selection for analysis
+                            f"loss_{split}_{stage}_local": aggregated.loss
                         }
                         wandb.log(log_dict, step=self.current_epoch)
 
