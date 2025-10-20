@@ -473,47 +473,24 @@ class VGG(DecoupledModel):
 # What you only need to do is define the architecture in __init__().
 # Don't need to consider anything else, which are handled by DecoupledModel well already.
 # Run `python *.py -m custom` to use your custom model.
+# class CustomModel(DecoupledModel):
+#     def __init__(self, dataset):
+#         super().__init__()
+#         # You need to define:
+#         # 1. self.base (the feature extractor part)
+#         # 2. self.classifier (normally the final fully connected layer)
+#         # The default forwarding process is: out = self.classifier(self.base(input))
+#         pass
+
 class CustomModel(DecoupledModel):
     def __init__(self, dataset):
         super().__init__()
-        # You need to define:
-        # 1. self.base (the feature extractor part)
-        # 2. self.classifier (normally the final fully connected layer)
-        # The default forwarding process is: out = self.classifier(self.base(input))
-        pass
-class ModerateCNN(DecoupledModel):
-    """
-    Unified ModerateCNN model that adapts to different datasets.
-    The convolutional base has 3 pooling layers, so the spatial
-    dimension is divided by 8 (e.g., 32x32 -> 4x4, 28x28 -> 3x3).
-    The final feature map depth is 256.
-    """
-    
-    # Calculate feature length: 256 * (H/8) * (W/8)
-    # Note: Uses integer division for each pooling step.
-    feature_length = {
-        # 28x28 inputs (28->14->7->3) -> 256*3*3 = 2304
-        "mnist": 2304,
-        "medmnistS": 2304,
-        "medmnistC": 2304,
-        "medmnistA": 2304,
-        "fmnist": 2304,
-        "emnist": 2304,
         
-        # 32x32 inputs (32->16->8->4) -> 256*4*4 = 4096
-        "cifar10": 4096,
-        "cinic10": 4096,
-        "cifar100": 4096,
-        "svhn": 4096,
-    }
-
-    def __init__(self, dataset: str, pretrained: bool):
-        super(ModerateCNN, self).__init__()
-
+        # Get dataset configuration
         in_channels = INPUT_CHANNELS[dataset]
         num_classes = NUM_CLASSES[dataset]
-        feature_dim = self.feature_length[dataset]
-
+        
+        # Define the convolutional base
         conv_layer = nn.Sequential(
             # Conv Layer block 1
             nn.Conv2d(in_channels=in_channels, out_channels=32, kernel_size=3, padding=1),
@@ -521,7 +498,7 @@ class ModerateCNN(DecoupledModel):
             nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
-
+            
             # Conv Layer block 2
             nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
@@ -529,7 +506,7 @@ class ModerateCNN(DecoupledModel):
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
             nn.Dropout2d(p=0.05),
-
+            
             # Conv Layer block 3
             nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
@@ -538,10 +515,26 @@ class ModerateCNN(DecoupledModel):
             nn.MaxPool2d(kernel_size=2, stride=2),
         )
         
-        # self.base is the feature extractor
+        # self.base is the feature extractor 
         self.base = nn.Sequential(conv_layer, nn.Flatten())
-
-        # self.classifier is the final head
+        
+        # Dynamically compute the feature dimension after flattening
+        with torch.no_grad():
+            # Create dummy input based on common dataset dimensions
+            if dataset in ["mnist", "medmnistS", "medmnistC", "medmnistA", "fmnist", "emnist"]:
+                dummy_input = torch.zeros(1, in_channels, 28, 28)
+            elif dataset in ["cifar10", "cinic10", "cifar100", "svhn"]:
+                dummy_input = torch.zeros(1, in_channels, 32, 32)
+            elif dataset == "usps":
+                dummy_input = torch.zeros(1, in_channels, 16, 16)
+            elif dataset == "tinyimagenet":
+                dummy_input = torch.zeros(1, in_channels, 64, 64)
+            else:
+                dummy_input = torch.zeros(1, in_channels, 32, 32)
+            
+            feature_dim = self.base(dummy_input).shape[1]
+        
+        # self.classifier is the final head (REQUIRED)
         self.classifier = nn.Sequential(
             nn.Dropout(p=0.1),
             nn.Linear(feature_dim, 1024),
