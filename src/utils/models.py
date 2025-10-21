@@ -490,6 +490,8 @@ class CustomModel(DecoupledModel):
         in_channels = INPUT_CHANNELS[dataset]
         num_classes = NUM_CLASSES[dataset]
         
+        print(f"Custom Model Initialized")
+
         # Define the convolutional base
         conv_layer = nn.Sequential(
             # Conv Layer block 1
