@@ -483,7 +483,7 @@ class VGG(DecoupledModel):
 #         pass
 
 class CustomModel(DecoupledModel):
-    def __init__(self, dataset, pretrained=False):
+    def __init__(self, version, dataset, pretrained=False):
         super().__init__()
         
         # Get dataset configuration
