@@ -176,7 +176,7 @@ class FedAvgServer:
                     print("Successfully logged into WandB")
                     wandb.init(
                         project="fl-bench",  # Customize project name as needed
-                        name=f"{self.algorithm_name}_{self.args.dataset.name}_{self.args.common.seed}",  # Unique run name including seed for reproducibility
+                        name=f"{self.algorithm_name}_{self.args.dataset.name}_{self.args.common.seed}_GLOBAL{self.args.common.global_epoch}_LOCAL{self.args.common.local_epoch}",  # Unique run name including seed for reproducibility
                         config=OmegaConf.to_container(self.args, resolve=True),  # Logs Hydra args as structured config
                         tags=[self.algorithm_name, self.args.dataset.name]  # Optional tags for filtering runs
                     )
