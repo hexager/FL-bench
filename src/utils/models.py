@@ -546,9 +546,55 @@ class CustomModel(DecoupledModel):
             nn.Dropout(p=0.1),
             nn.Linear(512, num_classes)
         )
+class Custom2(DecoupledModel):
+    def __init__(self, dataset: str, version=None, pretrained: bool = False):
+        super().__init__()
+
+        # Resolve input channels and classes from repo constants
+        in_channels = INPUT_CHANNELS[dataset]
+        num_classes = NUM_CLASSES[dataset]
+
+        # Convolutional feature extractor (LeNet-like)
+        conv = nn.Sequential(
+            nn.Conv2d(in_channels=in_channels, out_channels=20, kernel_size=5, stride=1, padding=0),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+
+            nn.Conv2d(in_channels=20, out_channels=50, kernel_size=5, stride=1, padding=0),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+        )
+
+        # Base is conv stack + flatten to expose last features cleanly
+        self.base = nn.Sequential(conv, nn.Flatten())
+
+        # Dynamically infer flattened feature dimension
+        with torch.no_grad():
+            if dataset in ["mnist", "medmnistS", "medmnistC", "medmnistA", "fmnist", "emnist"]:
+                H = W = 28
+            elif dataset in ["cifar10", "cinic10", "cifar100", "svhn"]:
+                H = W = 32
+            elif dataset == "usps":
+                H = W = 16
+            elif dataset in ["tiny_imagenet", "tinyimagenet"]:
+                H = W = 64
+            else:
+                H = W = 32
+
+            dummy = torch.zeros(1, in_channels, H, W)
+            feature_dim = self.base(dummy).shape[1]
+
+        # Classifier head (LeNet-style)
+        self.classifier = nn.Sequential(
+            nn.Linear(feature_dim, 500),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=0.1),
+            nn.Linear(500, num_classes),
+        )
 
 MODELS = {
     "custom": CustomModel,
+    "custom2": Custom2,
     "lenet5": LeNet5,
     "avgcnn": FedAvgCNN,
     "alex": AlexNet,
