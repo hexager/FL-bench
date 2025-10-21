@@ -547,7 +547,7 @@ class CustomModel(DecoupledModel):
             nn.Linear(512, num_classes)
         )
 class Custom2(DecoupledModel):
-    def __init__(self, dataset: str, version=None, pretrained: bool = False):
+    def __init__(self, dataset, version=None, pretrained=False):
         super().__init__()
 
         # Resolve input channels and classes from repo constants
