@@ -14,4 +14,4 @@ class FedProxServer(FedAvgServer):
     def get_hyperparams(args_list=None) -> Namespace:
         parser = ArgumentParser()
         parser.add_argument("--mu", type=float, default=1.0)
-        return parser.parse_args(args_list)
+        return parser.parse_args(args_list)     
