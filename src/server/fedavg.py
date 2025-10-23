@@ -169,7 +169,6 @@ class FedAvgServer:
                 from kaggle_secrets import UserSecretsClient
                 user_secrets = UserSecretsClient()
                 wandb_api_key = user_secrets.get_secret("WANDB_API_KEY")
-                if
                 if wandb_api_key:
                     wandb.login(key=wandb_api_key)
                     wandb_initialized = True
