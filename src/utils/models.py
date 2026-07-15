@@ -342,6 +342,14 @@ class ResNet(DecoupledModel):
         "152": (models.resnet152, models.ResNet152_Weights.DEFAULT),
     }
 
+    # Datasets whose spatial size is <= 32×32 get a CIFAR-style stem
+    # (3×3 conv1, stride 1, no maxpool) instead of the ImageNet stem.
+    _SMALL_IMAGE_DATASETS = frozenset(
+        name
+        for name, shape in DATA_SHAPE.items()
+        if isinstance(shape, tuple) and len(shape) == 3 and max(shape[1], shape[2]) <= 32
+    )
+
     def __init__(self, version, dataset, pretrained):
         super().__init__()
 
@@ -349,6 +357,18 @@ class ResNet(DecoupledModel):
         resnet: models.ResNet = self.archs[version][0](
             weights=self.archs[version][1] if pretrained else None
         )
+
+        # For small-image datasets (e.g. CIFAR-10/100, SVHN, CINIC-10),
+        # replace the aggressive ImageNet stem with a CIFAR-appropriate one:
+        #   - conv1: 3×3 kernel, stride 1, padding 1 (preserves spatial dims)
+        #   - remove maxpool (no early downsampling)
+        if dataset in self._SMALL_IMAGE_DATASETS:
+            resnet.conv1 = nn.Conv2d(
+                INPUT_CHANNELS[dataset], 64,
+                kernel_size=3, stride=1, padding=1, bias=False,
+            )
+            resnet.maxpool = nn.Identity()
+
         self.base = resnet
         self.classifier = nn.Linear(self.base.fc.in_features, NUM_CLASSES[dataset])
         self.base.fc = nn.Identity()
