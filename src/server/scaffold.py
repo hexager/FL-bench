@@ -38,6 +38,16 @@ class SCAFFOLDServer(FedAvgServer):
     def aggregate_client_updates(self, client_packages: dict[int, dict[str, Any]]):
         c_delta_list = [package["c_delta"] for package in client_packages.values()]
         y_delta_list = [package["y_delta"] for package in client_packages.values()]
+
+        # Persist each participating client's updated control variate c_i.
+        # Without this write-back every later round would resend the initial
+        # (zero) c_i, which breaks SCAFFOLD's stateful correction.
+        for client_id, package in client_packages.items():
+            self.c_local[client_id] = [
+                c.clone().cpu() for c in package["c_local"]
+            ]
+
+        # SCAFFOLD aggregates participating model updates uniformly.
         weights = torch.ones(len(y_delta_list)) / len(y_delta_list)
         for param, y_delta in zip(
             self.public_model_params.values(), zip(*y_delta_list)
@@ -46,6 +56,7 @@ class SCAFFOLDServer(FedAvgServer):
                 torch.stack(y_delta, dim=-1) * weights, dim=-1
             )
 
-        # update global control
+        # Global control update: c <- c + (1 / N) * sum_{i in S} Delta c_i.
+        # N is the total client count, not just the number participating.
         for c_global, c_delta in zip(self.c_global, zip(*c_delta_list)):
             c_global.data += torch.stack(c_delta, dim=-1).sum(dim=-1) / self.client_num
