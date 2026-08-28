@@ -36,6 +36,13 @@ class SCAFFOLDServer(FedAvgServer):
 
     @torch.no_grad()
     def aggregate_client_updates(self, client_packages: dict[int, dict[str, Any]]):
+        print(
+            "SCAFFOLD local steps:",
+            {
+                client_id: package["num_local_steps"]
+                for client_id, package in client_packages.items()
+            },
+        )
         c_delta_list = [package["c_delta"] for package in client_packages.values()]
         y_delta_list = [package["y_delta"] for package in client_packages.values()]
 
@@ -46,7 +53,13 @@ class SCAFFOLDServer(FedAvgServer):
             self.c_local[client_id] = [
                 c.clone().cpu() for c in package["c_local"]
             ]
-
+        print(
+            "c_local norms:",
+            {
+                client_id: sum(c.norm().item() for c in self.c_local[client_id])
+                for client_id in client_packages
+            },
+        )
         # SCAFFOLD aggregates participating model updates uniformly.
         weights = torch.ones(len(y_delta_list)) / len(y_delta_list)
         for param, y_delta in zip(
