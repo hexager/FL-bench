@@ -45,19 +45,19 @@ MODELS = [
 PARTITIONS = [
     {
         "name": "dirichlet_0.1",
-        "generator_args": ["--iid", "0", "--alpha", "0.1"],
+        "generator_args": ["-a", "0.1"],
     },
     {
         "name": "dirichlet_0.05",
-        "generator_args": ["--iid", "0", "--alpha", "0.05"],
+        "generator_args": ["-a", "0.05"],
     },
     {
         "name": "dirichlet_1.0",
-        "generator_args": ["--iid", "0", "--alpha", "1.0"],
+        "generator_args": ["-a", "1.0"],
     },
     {
         "name": "iid",
-        "generator_args": ["--iid", "1"],
+        "generator_args": ["--iid", "1.0"],
     },
 ]
 
@@ -76,7 +76,7 @@ COMMON_CONFIG = {
 
 
 # Number of federated clients used during data generation.
-CLIENT_NUM = 20
+CLIENT_NUM = 16
 
 # Data-partition generation seed.
 PARTITION_SEED = 42
@@ -214,27 +214,15 @@ def generate_partition(
     gpu,
     dry_run=False,
 ):
-    """
-    Generate one FL-bench dataset partition.
-
-    FL-bench stores one active partition for each dataset. Therefore, all
-    experiments using the current partition are run before generating the next
-    partition.
-    """
-
-    generator_file = project_root / "generate_data.py"
+    """Generate one FL-bench dataset partition."""
 
     command = [
         sys.executable,
-        str(generator_file),
-        "--dataset",
+        str(project_root / "generate_data.py"),
+        "-d",
         dataset,
-        "--client_num",
+        "-cn",
         str(CLIENT_NUM),
-        "--seed",
-        str(PARTITION_SEED),
-        "--plot_distribution",
-        "0",
         *partition["generator_args"],
     ]
 
@@ -246,7 +234,6 @@ def generate_partition(
     print(f"Dataset          : {dataset}")
     print(f"Partition        : {partition['name']}")
     print(f"Number of clients: {CLIENT_NUM}")
-    print(f"Partition seed   : {PARTITION_SEED}")
     print("Command:")
     print(" ".join(command))
     print("#" * 80, flush=True)
@@ -263,13 +250,11 @@ def generate_partition(
 
     if result.returncode != 0:
         print(
-            f"\nERROR: Partition generation failed for "
-            f"dataset={dataset}, partition={partition['name']}.",
-            flush=True,
+            f"ERROR: Data generation failed for "
+            f"{dataset}/{partition['name']}."
         )
 
     return result.returncode
-
 
 # =============================================================================
 # Training
