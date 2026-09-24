@@ -280,15 +280,22 @@ def run_experiment(
         **COMMON_CONFIG,
         **hyperparameters,
     }
-
     command = [
-        sys.executable,
-        str(project_root / "main.py"),
-        *[
-            f"{key}={hydra_value(value)}"
-            for key, value in configuration.items()
-        ],
+    sys.executable,
+    str(project_root / "main.py"),
     ]
+
+    for key, value in configuration.items():
+        # Method-specific config groups may not exist in defaults.yaml.
+        # ++ adds the key if missing and overrides it if already present.
+        if key.startswith(f"{method}."):
+            override_key = f"++{key}"
+        else:
+            override_key = key
+    
+        command.append(
+            f"{override_key}={hydra_value(value)}"
+        )
 
     environment = os.environ.copy()
     environment["CUDA_VISIBLE_DEVICES"] = str(gpu)
