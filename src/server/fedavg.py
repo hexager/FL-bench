@@ -166,22 +166,34 @@ class FedAvgServer:
         wandb_initialized=False
         if self.args.common.monitor == "wandb":
             try:
-                from kaggle_secrets import UserSecretsClient
-                user_secrets = UserSecretsClient()
-                wandb_api_key = user_secrets.get_secret("WANDB_API_KEY")
+                # Prefer the environment variable (RunPod / local); fall back to Kaggle secrets.
+                wandb_api_key = os.environ.get("WANDB_API_KEY")
+                if not wandb_api_key:
+                    try:
+                        from kaggle_secrets import UserSecretsClient
+                        wandb_api_key = UserSecretsClient().get_secret("WANDB_API_KEY")
+                    except Exception:
+                        wandb_api_key = None
                 if wandb_api_key:
                     wandb.login(key=wandb_api_key)
                     wandb_initialized = True
                     print("Successfully logged into WandB")
+                    default_name = f"{self.algorithm_name}_{self.args.dataset.name}_{self.args.common.seed}_GLOBAL{self.args.common.global_epoch}_LOCAL{self.args.common.local_epoch}"
                     wandb.init(
-                        project="FLBench",  # Customize project name as needed
-                        name=f"{self.algorithm_name}_{self.args.dataset.name}_{self.args.common.seed}_GLOBAL{self.args.common.global_epoch}_LOCAL{self.args.common.local_epoch}",  # Unique run name including seed for reproducibility
-                        config=OmegaConf.to_container(self.args, resolve=True),  # Logs Hydra args as structured config
-                        tags=[self.algorithm_name, self.args.dataset.name]  # Optional tags for filtering runs
+                        project=os.environ.get("WANDB_PROJECT", "FLBench"),
+                        # grid_search.py sets FLBENCH_RUN_NAME so each grid point gets a unique name
+                        name=os.environ.get("FLBENCH_RUN_NAME", default_name),
+                        group=os.environ.get("FLBENCH_RUN_GROUP"),
+                        config=OmegaConf.to_container(self.args, resolve=True),
+                        tags=[self.algorithm_name, self.args.dataset.name]
+                        + [t for t in os.environ.get("FLBENCH_RUN_TAGS", "").split(",") if t],
                     )
-                    wandb.watch(self.model, log="all", log_freq=10)
+                    # wandb.watch(log="all") logs parameter + gradient histograms every few batches,
+                    # which is very slow for resnet18. Opt in with FLBENCH_WANDB_WATCH=1.
+                    if os.environ.get("FLBENCH_WANDB_WATCH", "0") == "1":
+                        wandb.watch(self.model, log="all", log_freq=10)
                 else:
-                    print("WandB API key not found in secrets")
+                    print("WandB API key not found (set WANDB_API_KEY)")
             except Exception as e:
                 print(f'Could not login to wandb: {e}. Proceeding without wandb.')
                 wandb_initialized = False
