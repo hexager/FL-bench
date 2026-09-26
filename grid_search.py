@@ -176,7 +176,7 @@ def make_combinations(parameter_grid):
 # def create_experiments(methods, datasets, models): 
 #     """Create experiments using only valid dataset-model pairs."""
 
-#     []
+#     experiments = []
 
 #     # Dataset and partition are the outer loops so a generated partition is
 #     # consumed by all relevant runs before another partition overwrites it.
@@ -208,7 +208,7 @@ def make_combinations(parameter_grid):
 def create_experiments(methods, datasets, models, partition_names):
     """Create experiments using only valid dataset-model pairs."""
 
-    []
+    experiments = []
 
     selected_partitions = [
         partition
