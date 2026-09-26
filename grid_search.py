@@ -176,7 +176,7 @@ def make_combinations(parameter_grid):
 # def create_experiments(methods, datasets, models): 
 #     """Create experiments using only valid dataset-model pairs."""
 
-#     experiments = []
+#     []
 
 #     # Dataset and partition are the outer loops so a generated partition is
 #     # consumed by all relevant runs before another partition overwrites it.
@@ -208,7 +208,7 @@ def make_combinations(parameter_grid):
 def create_experiments(methods, datasets, models, partition_names):
     """Create experiments using only valid dataset-model pairs."""
 
-    experiments = []
+    []
 
     selected_partitions = [
         partition
@@ -837,10 +837,16 @@ def main():
     if not 0 <= args.shard_index < args.num_shards:
         parser.error("--shard-index must be in [0, --num-shards)")
 
+    # experiments = create_experiments(
+    #     methods=args.methods,
+    #     datasets=args.datasets,
+    #     models=args.models,
+    # )
     experiments = create_experiments(
         methods=args.methods,
         datasets=args.datasets,
         models=args.models,
+        partition_names=args.partitions,
     )
 
     if not experiments:
@@ -873,7 +879,8 @@ def main():
     print(f"Datasets         : {args.datasets}")
     print(f"Requested models : {args.models}")
     print(f"Dataset mapping  : {DATASET_MODELS}")
-    print(f"Partitions       : {[item['name'] for item in PARTITIONS]}")
+    # print(f"Partitions       : {[item['name'] for item in PARTITIONS]}")
+    print(f"Partitions       : {args.partitions}")
     print(f"Global epochs    : {COMMON_CONFIG['common.global_epoch']}")
     print(f"Local epochs     : {COMMON_CONFIG['common.local_epoch']}")
     print(f"Number of clients: {CLIENT_NUM}")
