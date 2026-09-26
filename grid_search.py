@@ -173,13 +173,49 @@ def make_combinations(parameter_grid):
     ]
 
 
-def create_experiments(methods, datasets, models):
+# def create_experiments(methods, datasets, models): 
+#     """Create experiments using only valid dataset-model pairs."""
+
+#     experiments = []
+
+#     # Dataset and partition are the outer loops so a generated partition is
+#     # consumed by all relevant runs before another partition overwrites it.
+#     for dataset in datasets:
+#         selected_models = [
+#             model
+#             for model in models
+#             if model in DATASET_MODELS[dataset]
+#         ]
+
+#         for partition in PARTITIONS:
+#             for method in methods:
+#                 combinations = make_combinations(SEARCH_GRIDS[method])
+
+#                 for model in selected_models:
+#                     for hyperparameters in combinations:
+#                         experiments.append(
+#                             {
+#                                 "dataset": dataset,
+#                                 "partition": partition,
+#                                 "method": method,
+#                                 "model": model,
+#                                 "hyperparameters": hyperparameters,
+#                             }
+#                         )
+
+#     return experiments
+
+def create_experiments(methods, datasets, models, partition_names):
     """Create experiments using only valid dataset-model pairs."""
 
     experiments = []
 
-    # Dataset and partition are the outer loops so a generated partition is
-    # consumed by all relevant runs before another partition overwrites it.
+    selected_partitions = [
+        partition
+        for partition in PARTITIONS
+        if partition["name"] in partition_names
+    ]
+
     for dataset in datasets:
         selected_models = [
             model
@@ -187,7 +223,7 @@ def create_experiments(methods, datasets, models):
             if model in DATASET_MODELS[dataset]
         ]
 
-        for partition in PARTITIONS:
+        for partition in selected_partitions:
             for method in methods:
                 combinations = make_combinations(SEARCH_GRIDS[method])
 
@@ -575,6 +611,13 @@ def create_parser():
         "--stop-on-error",
         action="store_true",
         help="Stop immediately when data generation or training fails.",
+    )
+    parser.add_argument(
+        "--partitions",
+        nargs="+",
+        choices=[partition["name"] for partition in PARTITIONS],
+        default=[partition["name"] for partition in PARTITIONS],
+        help="Partitions to run.",
     )
 
     return parser
